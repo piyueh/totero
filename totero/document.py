@@ -7,6 +7,7 @@
 # Distributed under terms of the BSD 3-Clause license.
 
 """Widgets related to documents."""
+from copy import deepcopy as _deepcopy
 from typing import Sequence as _Sequence
 from typing import Mapping as _Mapping
 from typing import Any as _Any
@@ -32,10 +33,10 @@ class DocumentItem(_AttrMap):
     data : dict or pandas.Series
         The raw data of a document with brief info. The provided `dict`/`pandas.Series` should have
         at least the indices requested by `columns`.
-    columns : list  of str
+    columns : list of str, or None
         The columns to be shown when rendered. The keys in `columns` should be valid keys or column
         names of the `data`. If `None`, use all keys (except attachments) from `data`.
-    weights : list of int
+    weights : list of int, or None
         The weights of the column widths. If None, assume all column widths are the same. If
         `weights` is provided, it should have the same langth as the `columns`.
     wrap : str
@@ -119,6 +120,8 @@ class DocumentItem(_AttrMap):
         weights: _Optional[_Sequence[int]] = None,
         wrap: _Optional[str] = "clip",
     ):
+        # initialize parent with a placeholde/fake widget
+        super().__init__(_Text(""), self._normal_ctag, self._focus_ctag)
 
         # if pandas.Series is provided, convert it to `dict`
         if isinstance(data, _Series):
@@ -135,31 +138,18 @@ class DocumentItem(_AttrMap):
         except KeyError:  # attachment path does not exist
             self._attachments = []
 
-        # convert data to a dict of urwid.Text
-        self._data = {key: _Text(str(value), wrap=wrap) for key, value in data.items()}
-
-        # if no columns are provided, show all columns
-        if columns is None:
-            columns = list(self._data.keys())
-        else:  # make sure users did not request to show "attachment path"
-            if "attachment path" in columns:
-                raise ValueError("\"attachment path\" is not allowed in visible columns.")
-
-        # if no weights provided, use equal widths
-        if weights is None:
-            weights = [1] * len(columns)
-
         # initial attachment windows status
         self._attachment_win = None
 
-        # underlying widget; a urwid.Column
-        self._cols = [("weight", w, self._data[k]) for w, k in zip(weights, columns)]
-        self._cols = _Columns(self._cols, dividechars=1)
-        self._cols.ignore_focus = False
-        self._cols._selectable = True
+        # convert data to a dict of urwid.Text
+        self._data = {key: _Text(str(value), wrap=wrap) for key, value in data.items()}
 
-        # wrapped the Column with an AttrMap (this widget)
-        super().__init__(self._cols, self._normal_ctag, self._focus_ctag)
+        # initialize the copy of columns and weights
+        self._columns = None
+        self._weights = None
+
+        # set columns and weights, re-create the underlying Column widget, and re-render
+        self.reset_columns(columns, weights)
 
     def render(self, size: _Sequence[int], focus: bool = False):
         """See the docstring of urwid.Widget.render."""
@@ -185,6 +175,44 @@ class DocumentItem(_AttrMap):
             return None
 
         return key
+
+    def reset_columns(
+        self,
+        columns: _Optional[_Sequence[str]] = None,
+        weights: _Optional[_Sequence[int]] = None
+    ):
+        """Reset the columns to be rendered.
+
+        Parameters
+        ----------
+        columns : list of str, or None
+            See the constructor's parameters in the class docstring.
+        weights : list of int, or None
+            See the constructor's parameters in the class docstring.
+        """
+
+        # if no columns are provided, show all columns
+        if columns is None:
+            self._columns = list(self._data.keys())
+        else:  # make sure users did not request to show "attachment path"
+            if "attachment path" in columns:
+                raise ValueError("\"attachment path\" is not allowed in visible columns.")
+            self._columns = _deepcopy(columns)
+
+        # if no weights provided, use equal widths
+        if weights is None:
+            self._weights = [1] * len(self._columns)
+        else:
+            self._weights = _deepcopy(weights)
+
+        # underlying widget; a urwid.Column; will be saved as self._original_widget after __init__
+        cols = [("weight", w, self._data[k]) for w, k in zip(self._weights, self._columns)]
+        cols = _Columns(cols, dividechars=1)
+        cols.ignore_focus = False
+        cols._selectable = True
+
+        # reset and rerender
+        self._set_original_widget(cols)
 
     def _clear_pop_up(self, event: _Any):  # pylint: disable=unused-argument
         """Remove the pop-up attachment selection window.
