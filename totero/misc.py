@@ -44,7 +44,8 @@ _Widget._command_map = command_map  # pylint: disable=protected-access
 default_theme = [
     ("opt item normal", "white", "black", None, None, None),
     ("opt item focus", "black", "yellow", None, None, None),
-    ("opt win", "white", "black", None, None, None),
+    ("opt list title", "light red,bold,italics", "black", None, None, None),
+    ("opt list border", "yellow", "black", None, None, None),
     ("doc item normal", "white", "black", None, None, None),
     ("doc item focus", "black", "yellow", None, None, None),
     ("atthmnt win title", "light red,bold,italics", "black", None, None, None),
