@@ -127,3 +127,9 @@ class AttachmentSelectionPopUP(_AttrMap):
                 "left", self._title_ctag
             ), self._border_line_ctag
         )
+
+    def keypress(self, size: _Sequence[int], key: str):  # pylint: disable=unused-argument
+        """See the docstring of urwid.Widget.keypress."""
+        if self._command_map[key] == "exit program":  # ignore exit command
+            return None
+        return super().keypress(size, key)
