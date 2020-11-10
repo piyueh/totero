@@ -6,13 +6,49 @@
 #
 # Distributed under terms of the BSD 3-Clause license.
 
-"""Miscellaneous functions."""
+"""Miscellaneous functions.
+
+Attributes
+----------
+command_map : urwid.CommandMap
+    Custom command map shared by widgets.
+default_theme : list of tuples of str/None
+    Default color palette.
+"""
 from subprocess import Popen as _Popen
 from subprocess import PIPE as _PIPE
 from subprocess import DEVNULL as _DEVNULL
 from pathlib import Path as _Path
 from typing import Union as _Union
 from time import sleep as _sleep
+from urwid import Widget as _Widget
+from urwid import ExitMainLoop as _ExitMainLoop
+from urwid import CommandMap as _CommandMap
+
+# define our own command map
+command_map = _CommandMap()
+command_map["j"] = command_map["down"]
+command_map["k"] = command_map["up"]
+command_map["ctrl d"] = command_map["page down"]
+command_map["ctrl u"] = command_map["page up"]
+command_map[" "] = "select"
+command_map["q"] = "exit program"
+_Widget._command_map = command_map
+
+# default color palette
+default_theme = [
+    ("doc item normal", "white", "black", None, None, None),
+    ("doc item focus", "black", "yellow", None, None, None),
+    ("atthmnt win title", "light red,bold,italics", "black", None, None, None),
+    ("atthmnt win border", "yellow", "black", None, None, None),
+    ("atthmnt item normal", "white", "black", None, None, None),
+    ("atthmnt item focus", "black", "yellow", None, None, None),
+    ("cncl butn normal", "white", "black", None, None, None),
+    ("cncl butn focus", "black", "yellow", None, None, None),
+    ("cncl butn outline", "white", "black", None, None, None),
+    ("doc list header", "white", "black", None, None, None),
+    ("doc list divider", "white", "black", None, None, None),
+]
 
 
 def xdg_open(filepath: _Union[str, _Path], wait: int = 0):
@@ -60,3 +96,15 @@ def xdg_open(filepath: _Union[str, _Path], wait: int = 0):
         raise RuntimeError("xdg-open does not know how to open {}".format(filepath))
 
     return result
+
+
+def exit_trigger(key: str):
+    """Check if this is the key to exit the program.
+
+    Parameters
+    ----------
+    key : str
+        A key string.
+    """
+    if command_map[key] == "exit program":
+        raise _ExitMainLoop()

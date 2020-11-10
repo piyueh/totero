@@ -9,6 +9,7 @@
 """A TUI client to a local Zotero SQLite database."""
 from .document import DocumentItem
 from .documentlist import DocumentList
+from .misc import default_theme, command_map, exit_trigger
 
 __version__ = "0.1.dev0"
 __author__ = "Pi-Yueh Chuang <pychuang@pm.me>"
