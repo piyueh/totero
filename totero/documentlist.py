@@ -13,6 +13,8 @@ from typing import Sequence as _Sequence
 from pandas import DataFrame as _DataFrame
 from urwid import SimpleFocusListWalker as _SimpleFocusListWalker
 from urwid import Text as _Text
+from urwid import Pile as _Pile
+from urwid import Filler as _Filler
 from urwid import ListBox as _ListBox
 from urwid import AttrMap as _AttrMap
 from urwid import Columns as _Columns
@@ -88,9 +90,19 @@ class DocumentList(_AttrMap):
         # sanity check
         assert isinstance(data, _DataFrame), "`data` should be a pandas.DataFrame."
 
-        super().__init__(_ListBox(_SimpleFocusListWalker([])), None)
-        self.original_widget.body.append(_AttrMap(_Columns([], dividechars=1), self._header_ctag))
-        self.original_widget.body.append(_AttrMap(_Divider("="), self._divider_ctag))
+        self._content = _ListBox(_SimpleFocusListWalker([]))
+        self._header = _AttrMap(_Columns([], dividechars=1), self._header_ctag)
+
+        super().__init__(
+            _Pile(
+                [
+                    (1, _Filler(self._header)),
+                    (1, _Filler(_AttrMap(_Divider("="), self._divider_ctag))),
+                    self._content
+                ]
+            ),
+            None
+        )
 
         # a strong reference to the provided data
         self._data = data
@@ -99,8 +111,8 @@ class DocumentList(_AttrMap):
         self._docs = self._data.apply(lambda x: _DocumentItem(x, None, None, wrap), 1)
 
         # set the list
-        self.original_widget.body.extend(self._docs)
-        self.original_widget.body.set_focus(0)
+        self._content.body.extend(self._docs)
+        self._content.body.set_focus(0)
 
         # initial options
         self._wrap = wrap
@@ -138,7 +150,7 @@ class DocumentList(_AttrMap):
             self._weights = _deepcopy(weights)
 
         # configure the header
-        self.original_widget.body[0].original_widget.contents = [
+        self._header.original_widget.contents = [
             (_Text(c, wrap=self._wrap), ("weight", w, False))
             for w, c in zip(self._weights, self._columns)
         ]
@@ -152,12 +164,6 @@ class DocumentList(_AttrMap):
         _c, _w, _wrap = self._columns, self._weights, self._wrap  # to make code shorter
         self._data = data
         self._docs = self._data.apply(lambda x: _DocumentItem(x, _c, _w, _wrap), 1)
-
-        # will re-use the header and divider
-        header, divider = self.original_widget.body[:2]
-
-        self.original_widget.body.clear()
-        self.original_widget.body.append(header)
-        self.original_widget.body.append(divider)
-        self.original_widget.body.extend(self._docs)
-        self.original_widget.body.set_focus(0)
+        self._content.body.clear()
+        self._content.body.extend(self._docs)
+        self._content.body.set_focus(0)
