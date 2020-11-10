@@ -100,7 +100,7 @@ class DocumentItem(_AttrMap):
     """
 
     # color tag
-    _normal_ctag = "doc item normal doc"
+    _normal_ctag = "doc item normal"
     _focus_ctag = "doc item focus"
 
     def __init__(

@@ -43,7 +43,10 @@ def main():
 
     columns = ["author", "year", "title", "publication title", "time added"]
     weights = [20, 6, 100, 40, 20]
-    box = urwid.LineBox(urwid.Padding(DocumentList(docs, columns, weights), left=2, right=2))
+    box = urwid.AttrMap(
+        urwid.LineBox(urwid.Padding(DocumentList(docs, columns, weights), left=2, right=2)),
+        "doc list header"
+    )
 
     loop = urwid.MainLoop(box, default_theme, unhandled_input=exit_trigger, pop_ups=True)
     loop.run()
