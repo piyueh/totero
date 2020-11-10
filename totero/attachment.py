@@ -10,9 +10,6 @@
 from typing import Sequence as _Sequence
 from typing import Union as _Union
 from pathlib import Path as _Path
-from subprocess import Popen as _Popen
-from subprocess import PIPE as _PIPE
-from subprocess import DEVNULL as _DEVNULL
 from urwid import AttrMap as _AttrMap
 from urwid import Text as _Text
 from urwid import LineBox as _LineBox
@@ -20,6 +17,7 @@ from urwid import ListBox as _ListBox
 from urwid import Columns as _Columns
 from urwid import SimpleFocusListWalker as _SimpleFocusListWalker
 from urwid import connect_signal as _connect_signal
+from .misc import xdg_open as _xdg_open
 
 
 class CancelButton(_AttrMap):
@@ -32,23 +30,32 @@ class CancelButton(_AttrMap):
     signals : list of str
         The signals that are allowed to be emitted from this class. This should be a private
         attribute. But the current design in `urwid` requires it to be a public attribute.
+
+    Color palette
+    -------------
+    1. Set `"cncl butn normal"` for the buttons not on focus; alternatively, set this class'
+       attribute `_nrom_ctag` to change the color tag.
+    2. Set `"cncl butn focus"` for the buttons on focus; alternatively, set this class' attribute
+       `_focus_ctag` to change the color tag.
+    3. Set `"cncl butn outline"` for buttons' border lines; alternatively, set this class' attribute
+       `_outline_ctag` to change the color tag.
     """
 
     # register signals
     signals = ["close"]
 
     # default color tags in palette
-    _button_norm_ctag = "normal button"
-    _button_focus_ctag = "selected button"
-    _button_outline_ctag = "button outline"
+    _norm_ctag = "cncl butn normal"
+    _focus_ctag = "cncl butn focus"
+    _outline_ctag = "cncl butn outline"
 
     def __init__(self):
         """Constructor. See class' docstring."""
         self._txt = _Text("Cancel", "center", "clip")
         self._txt.ignore_focus = False
         self._txt._selectable = True
-        self._txt = _AttrMap(self._txt, self._button_norm_ctag, self._button_focus_ctag)
-        super().__init__(_LineBox(self._txt), self._button_outline_ctag)
+        self._txt = _AttrMap(self._txt, self._norm_ctag, self._focus_ctag)
+        super().__init__(_LineBox(self._txt), self._outline_ctag)
 
     def keypress(self, size: _Sequence[int], key: str) -> _Union[str, None]:
         """See the docstring of urwid.Widget.keypress."""
@@ -59,7 +66,7 @@ class CancelButton(_AttrMap):
         return key
 
 
-class AttachmetnItem(_AttrMap):
+class AttachmentItem(_AttrMap):
     """A row item that represents an attachment.
 
     This widget stors the full path to an attachment but displays only the file name. When "enter"
@@ -77,22 +84,29 @@ class AttachmetnItem(_AttrMap):
     signals : list of str
         The signals that are allowed to be emitted from this class. This should be a private
         attribute. But the current design in `urwid` requires it to be a public attribute.
+
+    Color palette
+    -------------
+    1. Set `"atthmnt item normal"` for the items not on focus; alternatively, set this class'
+       attribute `_norm_ctag` to change the color tag.
+    2. Set `"atthmnt item focus"` for the items on focus; alternatively, set this class' attribute
+       `_focus_ctagg` to change the color tag.
     """
 
     # register signals
     signals = ["close"]
 
     # default color tags in palette
-    _atta_norm_ctag = "normal doc"
-    _atta_focus_ctag = "selected doc"
+    _norm_ctag = "atthmnt item normal"
+    _focus_ctag = "atthmnt item focus"
 
     def __init__(self, path: _Union[str, _Path], wrap: str = "clip"):
         """Constructor. See class' docstring."""
-        self._path = _Path(path)
-        self._txt = _Text("    \u231e "+str(self._path.name), wrap=wrap)
+        self._path = _Path(path).expanduser().resolve()
+        self._txt = _Text("    \u2192 "+str(self._path.name), wrap=wrap)
         self._txt.ignore_focus = False
         self._txt._selectable = True
-        super().__init__(self._txt, self._atta_norm_ctag, self._atta_focus_ctag)
+        super().__init__(self._txt, self._norm_ctag, self._focus_ctag)
 
     def keypress(self, size: _Sequence[int], key: str) -> _Union[str, None]:
         """See the docstring of urwid.Widget.keypress."""
@@ -100,18 +114,20 @@ class AttachmetnItem(_AttrMap):
         if key != "enter":
             return key
 
-        # for enter: rely on xdg-open to open the attachment
-        _Popen(["xdg-open", self._path], stdin=_DEVNULL, stdout=_PIPE, stderr=_PIPE)
+        _xdg_open(self._path)
         self._emit("close")
         return None
 
 
-class AttachmentSelectionPopUP(_LineBox):
+class AttachmentSelectionPopUP(_AttrMap):
     """A Pop-up box containing a list of attachments.
+
+    Only pop-up when there are more than one attachment in the list. If there's only one attachment,
+    the widget will directly pass the key code to the only AttachmentItem.
 
     Parameters
     ----------
-    attachments : a list of str or a list of path-like
+    attachments : list of str, list of path-like, or a list of AttachmentItem
         The absolute paths to attachments.
 
     Attributes
@@ -119,27 +135,40 @@ class AttachmentSelectionPopUP(_LineBox):
     signals : list of str
         The signals that are allowed to be emitted from this class. This should be a private
         attribute. But the current design in `urwid` requires it to be a public attribute.
+
+    Color palette
+    -------------
+    1. Set `"atthmnt win title"` title font attributes. Alternatively, set the class' attribute
+       `_title_ctag` to change the color tag.
+    2. Set `"atthmnt win border"` for border lines. Alternatively, set this class' attribute
+       `_border_line_ctag` to change the color tag.
     """
 
     # register signals
     signals = ["close"]
 
     # default color tags in palette
-    _title_ctag = "attachment win title"
+    _title_ctag = "atthmnt win title"
+    _border_line_ctag = "atthmnt win border"
 
     def __init__(self, attachments: _Sequence[_Union[str, _Path]]):
         """Constructor. See class' docstring."""
 
+        # the cancel button
         button = CancelButton()
+        _connect_signal(button, 'close', lambda button: self._emit("close"))
         last_row = _Columns([_Text(""), (10, button)], 1)
 
-        # if a child widget sends "close" signal, this widget also sends "close" to the parent
-        _connect_signal(button, 'close', lambda button: self._emit("close"))
+        # convert strings/paths to AttachmentItem list
+        data = []
         for att in attachments:
-            _connect_signal(att, 'close', lambda button: self._emit("close"))
+            data.append(att if isinstance(att, AttachmentItem) else AttachmentItem(att))
+            _connect_signal(data[-1], 'close', lambda button: self._emit("close"))
 
         super().__init__(
-            _ListBox(_SimpleFocusListWalker([*attachments, last_row])),
-            "Multiple attachments found. Select one to open.",
-            "left", self._title_ctag
+            _LineBox(
+                _ListBox(_SimpleFocusListWalker([*data, last_row])),
+                "Multiple attachments found. Select one to open.",
+                "left", self._title_ctag
+            ), self._border_line_ctag
         )
