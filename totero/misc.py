@@ -38,6 +38,7 @@ command_map["l"] = command_map["right"]
 command_map["ctrl d"] = command_map["page down"]
 command_map["ctrl u"] = command_map["page up"]
 command_map["q"] = "exit program"
+command_map["f1"] = "sort documents"
 _Widget._command_map = command_map  # pylint: disable=protected-access
 
 # default color palette

@@ -8,6 +8,7 @@
 
 """A window showing a list of documents."""
 from copy import deepcopy as _deepcopy
+from typing import Union as _Union
 from typing import Optional as _Optional
 from typing import Sequence as _Sequence
 from pandas import DataFrame as _DataFrame
@@ -19,7 +20,10 @@ from urwid import ListBox as _ListBox
 from urwid import AttrMap as _AttrMap
 from urwid import Columns as _Columns
 from urwid import Divider as _Divider
+from urwid import CompositeCanvas as _CompositeCanvas
+from urwid import connect_signal as _connect_signal
 from .document import DocumentItem as _DocumentItem
+from .optionlist import OptionList as _OptionList
 
 
 class DocumentList(_AttrMap):
@@ -32,7 +36,7 @@ class DocumentList(_AttrMap):
     ----------
     data : pandas.DataFrame
         The raw data of a document list with brief info. The `pandas.DataFrame` should have at least
-        the columns requested by `columns`. This widget makes a reference to the `data` so simple.
+        the columns requested by `columns`. This widget makes a deep copy of the `data`.
     columns : list of str, or None
         The columns to be shown when rendered. The keys in `columns` should be valid column names of
         the `data`. If `None`, use all columns from `data`.
@@ -90,37 +94,30 @@ class DocumentList(_AttrMap):
         # sanity check
         assert isinstance(data, _DataFrame), "`data` should be a pandas.DataFrame."
 
+        # initialize widgets
         self._content = _ListBox(_SimpleFocusListWalker([]))
         self._header = _AttrMap(_Columns([], dividechars=1), self._header_ctag)
 
         super().__init__(
-            _Pile(
-                [
-                    (1, _Filler(self._header)),
-                    (1, _Filler(_AttrMap(_Divider("="), self._divider_ctag))),
-                    self._content
-                ]
-            ),
-            None
+            _Pile([
+                (1, _Filler(self._header)),
+                (1, _Filler(_AttrMap(_Divider("="), self._divider_ctag))),
+                self._content
+            ]), None
         )
 
-        # a strong reference to the provided data
-        self._data = data
-
-        # initialize document item list
-        self._docs = self._data.apply(lambda x: _DocumentItem(x, None, None, wrap), 1)
-
-        # set the list
-        self._content.body.extend(self._docs)
-        self._content.body.set_focus(0)
-
-        # initial options
+        # initialize attributes
         self._wrap = wrap
         self._columns = None
         self._weights = None
+        self._data = None
 
-        # adjust the displayed columns
+        # set the data and adjust the displated columns
+        self.reset_data(data)
         self.reset_columns(columns, weights)
+
+        # initialize pop up windows
+        self._sort_selection_win = None
 
     def reset_columns(
         self,
@@ -140,6 +137,7 @@ class DocumentList(_AttrMap):
         # if no columns are provided, show all columns
         if columns is None:
             self._columns = self._data.columns.to_list()
+            self._columns.remove("widget")
         else:
             self._columns = _deepcopy(columns)
 
@@ -156,14 +154,70 @@ class DocumentList(_AttrMap):
         ]
 
         # a Series of DocumentItem
-        for widget in self._docs:
+        for widget in self._data["widget"]:
             widget.reset_columns(self._columns, self._weights)
 
     def reset_data(self, data: _DataFrame):
-        """Reset the underlying pandas.DataFrame."""
+        """Reset the underlying pandas.DataFrame.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame
+        """
         _c, _w, _wrap = self._columns, self._weights, self._wrap  # to make code shorter
-        self._data = data
-        self._docs = self._data.apply(lambda x: _DocumentItem(x, _c, _w, _wrap), 1)
+        self._data = data.copy()
+        self._data["widget"] = self._data.apply(lambda x: _DocumentItem(x, _c, _w, _wrap), 1)
         self._content.body.clear()
-        self._content.body.extend(self._docs)
+        self._content.body.extend(self._data["widget"])
         self._content.body.set_focus(0)
+
+    def sort_by(self, columns: _Union[str, _Sequence[str]], ascending: bool = True):
+        """Sort the document list based on the values in a column.
+
+        Parameters
+        ----------
+        column : str or list or str
+            The column(s) used for sorting.
+        ascending : bool
+            Ascending or descending.
+        """
+
+        self._data = self._data.sort_values(columns, 0, ascending)
+        self._content.body.clear()
+        self._content.body.extend(self._data["widget"])
+        self._content.body.set_focus(0)
+
+    def render(self, size: _Sequence[int], focus: bool = False):
+        """See the docstring of urwid.Widget.render."""
+        canv = super().render(size, focus)
+        if self._sort_selection_win is not None:
+            canv = _CompositeCanvas(canv)
+            width = min(max(26, max(map(lambda x: len(x)+8, self._columns))), canv.cols()-2)
+            height = min(len(self._columns)+5, canv.rows()-2)
+            left = (canv.cols() - width) // 2
+            top = (canv.rows() - height) // 2
+            canv.set_pop_up(self._sort_selection_win, left, top, width, height)
+        return canv
+
+    def keypress(self, size: _Sequence[int], key: str):  # pylint: disable=unused-argument
+        """See the docstring of urwid.Widget.keypress."""
+        if self._command_map[key] == "sort documents":
+            self._trigger_sort()
+            return None
+        return super().keypress(size, key)
+
+    def _trigger_sort(self):
+        """Create popup to ask what columns should be used for sorting."""
+
+        def finalize_popup(event):  # pylint: disable=unused-argument
+            keys = self._sort_selection_win.selected
+            self._sort_selection_win = None
+            self._invalidate()
+            try:
+                self.sort_by(keys)
+            except IndexError:  # no keys returned
+                pass
+
+        self._sort_selection_win = _OptionList(self._columns, title="Select solumns to sort")
+        _connect_signal(self._sort_selection_win, "close", finalize_popup)
+        self._invalidate()

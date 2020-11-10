@@ -38,13 +38,16 @@ def main():
     """Main function of the TUI client."""
 
     zpath = get_cmd_args().path
-    db = zoteroutils.Database(zpath)
-    docs = db.get_all_docs()
+    database = zoteroutils.Database(zpath)
 
     columns = ["author", "year", "title", "publication title", "time added"]
     weights = [20, 6, 100, 40, 20]
+
     box = urwid.AttrMap(
-        urwid.LineBox(urwid.Padding(DocumentList(docs, columns, weights), left=2, right=2)),
+        urwid.LineBox(urwid.Padding(
+            DocumentList(database.get_all_docs(), columns, weights),
+            left=2, right=2
+        )),
         "doc list header"
     )
 
