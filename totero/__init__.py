@@ -7,6 +7,8 @@
 # Distributed under terms of the BSD 3-Clause license.
 
 """A TUI client to a local Zotero SQLite database."""
+from .document import DocumentItem
+from .documentlist import DocumentList
 
 __version__ = "0.1.dev0"
 __author__ = "Pi-Yueh Chuang <pychuang@pm.me>"
