@@ -18,52 +18,7 @@ from urwid import Columns as _Columns
 from urwid import SimpleFocusListWalker as _SimpleFocusListWalker
 from urwid import connect_signal as _connect_signal
 from .misc import xdg_open as _xdg_open
-
-
-class CancelButton(_AttrMap):
-    """A cancel button.
-
-    This is a specialized button that everything is hard-coded, except the display attributes.
-
-    Attributes
-    ----------
-    signals : list of str
-        The signals that are allowed to be emitted from this class. This should be a private
-        attribute. But the current design in `urwid` requires it to be a public attribute.
-
-    Color palette
-    -------------
-    1. Set `"cncl butn normal"` for the buttons not on focus; alternatively, set this class'
-       attribute `_nrom_ctag` to change the color tag.
-    2. Set `"cncl butn focus"` for the buttons on focus; alternatively, set this class' attribute
-       `_focus_ctag` to change the color tag.
-    3. Set `"cncl butn outline"` for buttons' border lines; alternatively, set this class' attribute
-       `_outline_ctag` to change the color tag.
-    """
-
-    # register signals
-    signals = ["close"]
-
-    # default color tags in palette
-    _norm_ctag = "cncl butn normal"
-    _focus_ctag = "cncl butn focus"
-    _outline_ctag = "cncl butn outline"
-
-    def __init__(self):
-        """Constructor. See class' docstring."""
-        self._txt = _Text("Cancel", "center", "clip")
-        self._txt.ignore_focus = False
-        self._txt._selectable = True
-        self._txt = _AttrMap(self._txt, self._norm_ctag, self._focus_ctag)
-        super().__init__(_LineBox(self._txt), self._outline_ctag)
-
-    def keypress(self, size: _Sequence[int], key: str) -> _Union[str, None]:
-        """See the docstring of urwid.Widget.keypress."""
-        # pylint: disable=unused-argument
-        if key == "enter":
-            self._emit("close")
-            return None
-        return key
+from .misc import CancelButton as _CancelButton
 
 
 class AttachmentItem(_AttrMap):
@@ -94,7 +49,7 @@ class AttachmentItem(_AttrMap):
     """
 
     # register signals
-    signals = ["close"]
+    signals = ["done"]
 
     # default color tags in palette
     _norm_ctag = "atthmnt item normal"
@@ -115,7 +70,7 @@ class AttachmentItem(_AttrMap):
             return key
 
         _xdg_open(self._path)
-        self._emit("close")
+        self._emit("done")
         return None
 
 
@@ -155,15 +110,15 @@ class AttachmentSelectionPopUP(_AttrMap):
         """Constructor. See class' docstring."""
 
         # the cancel button
-        button = CancelButton()
-        _connect_signal(button, 'close', lambda button: self._emit("close"))
+        button = _CancelButton()
+        _connect_signal(button, 'cancel', lambda button: self._emit("close"))
         last_row = _Columns([_Text(""), (10, button)], 1)
 
         # convert strings/paths to AttachmentItem list
         data = []
         for att in attachments:
             data.append(att if isinstance(att, AttachmentItem) else AttachmentItem(att))
-            _connect_signal(data[-1], 'close', lambda button: self._emit("close"))
+            _connect_signal(data[-1], 'done', lambda button: self._emit("close"))
 
         super().__init__(
             _LineBox(
