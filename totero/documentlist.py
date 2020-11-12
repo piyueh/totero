@@ -116,8 +116,10 @@ class DocumentList(_AttrMap):
         self.reset_data(data)
         self.reset_columns(columns, weights)
 
-        # initialize pop up windows
-        self._sort_selection_win = None
+        # initialize pop up
+        self._popup = None
+        self._popup_width = None
+        self._popup_height = None
 
     def reset_columns(
         self,
@@ -191,13 +193,13 @@ class DocumentList(_AttrMap):
     def render(self, size: _Sequence[int], focus: bool = False):
         """See the docstring of urwid.Widget.render."""
         canv = super().render(size, focus)
-        if self._sort_selection_win is not None:
+        if self._popup is not None:
             canv = _CompositeCanvas(canv)
-            width = min(max(26, max(map(lambda x: len(x)+8, self._columns))), canv.cols()-2)
-            height = min(len(self._columns)+5, canv.rows()-2)
+            width = min(self._popup_width, canv.cols()-2)
+            height = min(self._popup_height, canv.rows()-2)
             left = (canv.cols() - width) // 2
             top = (canv.rows() - height) // 2
-            canv.set_pop_up(self._sort_selection_win, left, top, width, height)
+            canv.set_pop_up(self._popup, left, top, width, height)
         return canv
 
     def keypress(self, size: _Sequence[int], key: str):  # pylint: disable=unused-argument
@@ -205,20 +207,49 @@ class DocumentList(_AttrMap):
         if self._command_map[key] == "sort documents":
             self._trigger_sort()
             return None
+
+        if self._command_map[key] == "reset display columns":
+            self._trigger_column_reset()
+            return None
+
         return super().keypress(size, key)
 
     def _trigger_sort(self):
         """Create popup to ask what columns should be used for sorting."""
 
         def finalize_popup(event):  # pylint: disable=unused-argument
-            keys = self._sort_selection_win.selected
-            self._sort_selection_win = None
+            keys = self._popup.selected
+            self._popup = None
+            self._popup_width = None
+            self._popup_height = None
             self._invalidate()
             try:
                 self.sort_by(keys)
             except IndexError:  # no keys returned
                 pass
 
-        self._sort_selection_win = _OptionList(self._columns, title="Select solumns to sort")
-        _connect_signal(self._sort_selection_win, "close", finalize_popup)
+        self._popup = _OptionList(self._columns, title="Select solumns to sort")
+        self._popup_width = max(26, max(map(lambda x: len(x)+8, self._columns)))
+        self._popup_height = len(self._columns)+5
+        _connect_signal(self._popup, "close", finalize_popup)
+        self._invalidate()
+
+    def _trigger_column_reset(self):
+        """Create popup to ask what columns to display."""
+
+        def finalize_popup(event):  # pylint: disable=unused-argument
+            keys = self._popup.selected
+            self._popup = None
+            self._popup_width = None
+            self._popup_height = None
+            self._invalidate()
+            self.reset_columns(keys, None)  # TODO: what should happen when no columns are selected?
+
+        all_columns = self._data.columns.tolist()
+        all_columns.remove("widget")
+        all_states = [True if c in self._columns else False for c in all_columns]
+        self._popup = _OptionList(all_columns, all_states, title="Select solumns to display")
+        self._popup_width = max(29, max(map(lambda x: len(x)+8, all_columns)))
+        self._popup_height = len(all_columns)+5
+        _connect_signal(self._popup, "close", finalize_popup)
         self._invalidate()

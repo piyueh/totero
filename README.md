@@ -58,6 +58,7 @@ $ python <path to totero>/totero.py <path to Zotero data folder>
 2. Using `xdg-open` to open attachments by `enter`. Poping up a window to choose
    an attachment if multiple files exists for the selected document.
 3. Sorting with `F1` key. Poping up a window to choose which column(s) to sort.
+4. Selecting displayed columns with `F2` key. Poping up a window to choose column(s).
 4. Moving with `h`, `j`, `k`, and `l` keys
 5. Customizable color themes and key mappings. 
 
@@ -66,12 +67,11 @@ $ python <path to totero>/totero.py <path to Zotero data folder>
 
 These features are under development:
 
-1. Changing the columns to displayed
-2. Selecting a collection and showing documents in this collection
-3. Poping up a window to show the detail information of a selected document
-4. Searching
-5. A toolbar and a status bar
-6. Exporting to a bibtex file or a clipboard.
+1. Selecting a collection and showing documents in this collection
+2. Poping up a window to show the detail information of a selected document
+3. Searching
+4. A toolbar and a status bar
+5. Exporting to a bibtex file or a clipboard.
 
 The following features are in the plan but probably won't be finished in the near
 future:
