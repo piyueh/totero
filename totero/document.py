@@ -176,7 +176,7 @@ class DocumentItem(_AttrMap):
             ("weight", w, _Text(str(self._data.loc[k]), wrap=self._wrap))
             for w, k in zip(self._weights, self._columns)
         ]
-        cols = _Columns(cols, dividechars=1)
+        cols = _Columns(cols, dividechars=2)
         cols.ignore_focus = False
         cols._selectable = True  # pylint: disable=protected-access
 

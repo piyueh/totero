@@ -41,7 +41,7 @@ class DocumentList(_AttrMap):
         The columns to be shown when rendered. The keys in `columns` should be valid column names of
         the `data`. If `None`, use all columns from `data`.
     weights : list of int, or None
-        The weights of the column widths. If None, assume all column widths are the same. If
+        The weights of the column widths. If None, use the columns' average lenghts in `data`. If
         `weights` is provided, it should have the same langth as the `columns`.
     wrap : str
         The `wrap` argument in a `urwid.Text` widget. Whether the texts insides columns should be
@@ -96,12 +96,12 @@ class DocumentList(_AttrMap):
 
         # initialize widgets
         self._content = _ListBox(_SimpleFocusListWalker([]))
-        self._header = _AttrMap(_Columns([], dividechars=1), self._header_ctag)
+        self._header = _AttrMap(_Columns([], dividechars=2), self._header_ctag)
 
         super().__init__(
             _Pile([
                 (1, _Filler(self._header)),
-                (1, _Filler(_AttrMap(_Divider("="), self._divider_ctag))),
+                (1, _Filler(_AttrMap(_Divider("-"), self._divider_ctag))),
                 self._content
             ]), None
         )
@@ -141,9 +141,10 @@ class DocumentList(_AttrMap):
         else:
             self._columns = _deepcopy(columns)
 
-        # if no weights provided, use equal widths
+        # if no weights provided, use columns' average lendth
         if weights is None:
-            self._weights = [1] * len(self._columns)
+            self._weights = self._data[self._columns].applymap(str).applymap(len)
+            self._weights = (self._weights.median(0) + 0.5).astype(int).tolist()
         else:
             self._weights = _deepcopy(weights)
 

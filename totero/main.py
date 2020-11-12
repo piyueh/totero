@@ -40,8 +40,8 @@ def main():
     zpath = get_cmd_args().path
     database = zoteroutils.Database(zpath)
 
-    columns = ["author", "year", "title", "publication title", "time added"]
-    weights = [20, 6, 100, 40, 20]
+    columns = ["author", "title", "publication title", "year", "time added"]
+    weights = None
 
     box = urwid.AttrMap(
         urwid.LineBox(urwid.Padding(

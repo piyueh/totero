@@ -59,8 +59,8 @@ default_theme = [
     ("done butn normal", "white", "black", None, None, None),
     ("done butn focus", "black", "yellow", None, None, None),
     ("done butn outline", "white", "black", None, None, None),
-    ("doc list header", "white", "black", None, None, None),
-    ("doc list divider", "white", "black", None, None, None),
+    ("doc list header", "white,bold", "black", None, None, None),
+    ("doc list divider", "white,bold", "black", None, None, None),
 ]
 
 
