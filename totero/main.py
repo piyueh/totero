@@ -45,7 +45,7 @@ def main():
 
     box = urwid.AttrMap(
         urwid.LineBox(urwid.Padding(
-            DocumentList(database.get_all_docs(), columns, weights),
+            DocumentList(database.get_docs(), columns, weights),
             left=2, right=2
         )),
         "doc list header"
