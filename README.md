@@ -1,7 +1,16 @@
 totero -- a TUI client for Zotero 
 =================================
 
-***totero*** is a TUI (text/terminal-based user interfaces) client for Zotero.
+-----------------------------------------------------------------------------
+
+**Note**:
+I don't have enough time to work on this, though I haven't completely given
+this project up. Any contribution or/and collaboration are welcome!
+
+-----------------------------------------------------------------------------
+
+***totero*** is a TUI (text/terminal-based user interfaces) client for Zotero
+that relies only on local database (i.e., no need for a cloud Zotero account).
 The official Zotero GUI client is bundled with an old-version FireFox, which
 does not support Wayland. Under a Wayland environment, the official Zotero
 client must rely on XWayland and does not look nice, especially with 4K and
